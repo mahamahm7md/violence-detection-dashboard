@@ -1,6 +1,24 @@
 import os
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
+import gdown
+
+def download_models_if_missing():
+    os.makedirs("checkpoints", exist_ok=True)
+    
+    models = {
+        "checkpoints/r3d18_best_lcm_lstm.pth": "14yMBt6IVPcaOg62f66hFEzJFViVyMjeH",
+        "checkpoints/r3d18_best_RWF_lcm_lstm.pth": "1xzrhYECcNAwfRDodnXDUqPd34jmgG5XH",
+    }
+    
+    for path, file_id in models.items():
+        if not os.path.exists(path):
+            print(f"Downloading {path}...")
+            gdown.download(f"https://drive.google.com/uc?id={file_id}", path, quiet=False)
+            print(f"✅ Done: {path}")
+
+download_models_if_missing()
+
 # VisionGuard v8
 # Refactored dashboard with grouped navigation, review workspace, dataset lab,
 # history page, improved login screen, create-account and forgot-password flows.
@@ -1353,7 +1371,6 @@ def render_home():
         if st.button("🕘 History", use_container_width=True):
             go_to("🕘 History")
 
-    # ── Smart Feature Ideas ──────────────────────────────────
     with st.expander("🛠️ Smart Tools — click any to open", expanded=False):
         ideas = [
             ("✂️ Evidence Clip Trimmer",
@@ -1661,7 +1678,6 @@ def render_review_videos_tab(files):
     pred = st.session_state.active_pred
     is_f = is_fight_pred(pred)
 
-    # ── Fight / Normal Analysis Card ──────────────────────────
     if is_f:
         onset_f = pred.get("onset_frame", "?")
         onset_t = pred.get("onset_time", "N/A")
@@ -1677,7 +1693,6 @@ def render_review_videos_tab(files):
             f"<div class='fight-analysis-card'>"
             f"<div style='font-weight:800;color:#ff5555;font-size:1rem;margin-bottom:10px;'>⚠️ Fight Analysis</div>"
             f"<div style='display:grid;grid-template-columns:1fr 1fr;gap:16px;'>"
-            # How it started
             f"<div>"
             f"<div style='color:#e05252;font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:4px;'>🔴 How it started</div>"
             f"<div style='color:#c8d8e8;font-size:13px;line-height:1.6;'>"
@@ -1686,7 +1701,6 @@ def render_review_videos_tab(files):
             f"kinematic patterns consistent with the initiation of physical contact."
             f"</div>"
             f"</div>"
-            # How it developed
             f"<div>"
             f"<div style='color:#f5a623;font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:4px;'>🟡 How it developed</div>"
             f"<div style='color:#c8d8e8;font-size:13px;line-height:1.6;'>"
@@ -1715,7 +1729,6 @@ def render_review_videos_tab(files):
             unsafe_allow_html=True
         )
 
-    # ── Video selector ────────────────────────────────────────
     st.markdown("**Select CAM overlay to inspect:**")
     available_vids = [k for k in ALL_VID_KEYS if k in files]
     sel_vid = st.selectbox("Video type", available_vids,
@@ -1759,7 +1772,6 @@ def render_review_videos_tab(files):
     else:
         st.info("Video not available.")
 
-    # ── All videos compact grid ───────────────────────────────
     with st.expander("All available videos", expanded=False):
         row = st.columns(3)
         for i, vk in enumerate(ALL_VID_KEYS):
@@ -2278,9 +2290,6 @@ def render_smart_tools():
         "🔐 Chain of Custody",
     ])
 
-    # ══════════════════════════════════════════════════════
-    # TAB 1 — Evidence Clip Trimmer
-    # ══════════════════════════════════════════════════════
     with tab_clip:
         st.markdown("### ✂️ Evidence Clip Trimmer")
         st.markdown(
@@ -2291,7 +2300,6 @@ def render_smart_tools():
             unsafe_allow_html=True
         )
 
-        # Source selection
         records = get_all_pred_records()
         fight_records = [r for r in records if is_fight_pred(r)]
 
@@ -2312,7 +2320,6 @@ def render_smart_tools():
                 pre_secs  = st.number_input("Seconds before onset", min_value=0.0, max_value=30.0, value=3.0, step=0.5, key="trim_pre")
                 post_secs = st.number_input("Seconds after onset",  min_value=1.0, max_value=60.0, value=8.0, step=0.5, key="trim_post")
 
-            # Show prediction summary
             onset_t = rec.get("onset_time", "N/A")
             conf    = rec.get("confidence", "?")
             total_f = rec.get("total_frames", "?")
@@ -2340,7 +2347,6 @@ def render_smart_tools():
                         fps_v = cap.get(cv2.CAP_PROP_FPS) or 25.0
                         total_frames_v = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-                        # Parse onset frame
                         try:
                             onset_frame_v = int(rec.get("onset_frame", 0))
                         except:
@@ -2349,7 +2355,6 @@ def render_smart_tools():
                         start_frame = max(0, int(onset_frame_v - pre_secs * fps_v))
                         end_frame   = min(total_frames_v, int(onset_frame_v + post_secs * fps_v))
 
-                        # Seek and read frames
                         cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
                         clipped = []
                         for fi in range(end_frame - start_frame):
@@ -2361,9 +2366,7 @@ def render_smart_tools():
                         if not clipped:
                             st.error("Could not read frames from video.")
                         else:
-                            # Write to buffer
                             h_v, w_v = clipped[0].shape[:2]
-                            buf = io.BytesIO()
                             tmp_path = Path(CFG.OUTPUT_DIR) / f"_trim_tmp_{rec.get('_folder','clip')}.mp4"
                             wr = cv2.VideoWriter(str(tmp_path), cv2.VideoWriter_fourcc(*"mp4v"), fps_v, (w_v, h_v))
                             for frm in clipped: wr.write(frm)
@@ -2389,9 +2392,6 @@ def render_smart_tools():
                     except Exception as e:
                         st.error(f"Trim failed: {e}")
 
-    # ══════════════════════════════════════════════════════
-    # TAB 2 — Risk Score Calendar Heatmap
-    # ══════════════════════════════════════════════════════
     with tab_heatmap:
         st.markdown("### 📅 Risk Score Calendar Heatmap")
         st.markdown(
@@ -2405,10 +2405,9 @@ def render_smart_tools():
         if not hist_all:
             st.info("No history yet. Process some videos first — timestamps are pulled from analysis history.")
         else:
-            # Parse timestamps and build daily/hourly counts
-            day_counts   = {}  # "YYYY-MM-DD" → {fights, total}
-            hour_counts  = {}  # hour int 0-23 → {fights, total}
-            dow_counts   = {}  # weekday 0-6 → {fights, total}
+            day_counts   = {}
+            hour_counts  = {}
+            dow_counts   = {}
 
             for entry in hist_all:
                 ts_str = entry.get("ts", "")
@@ -2417,7 +2416,7 @@ def render_smart_tools():
                     dt = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
                     day_key = dt.strftime("%Y-%m-%d")
                     hr      = dt.hour
-                    dow     = dt.weekday()  # 0=Mon
+                    dow     = dt.weekday()
 
                     for store, key in [(day_counts, day_key), (hour_counts, hr), (dow_counts, dow)]:
                         if key not in store: store[key] = {"fights": 0, "total": 0}
@@ -2431,7 +2430,6 @@ def render_smart_tools():
             else:
                 c = get_plot_colors()
 
-                # ── Daily bar chart ──
                 st.markdown("**📊 Detections by Day**")
                 days_sorted = sorted(day_counts.keys())
                 day_fights  = [day_counts[d]["fights"] for d in days_sorted]
@@ -2454,7 +2452,6 @@ def render_smart_tools():
 
                 col_h, col_d = st.columns(2)
 
-                # ── Hourly heatmap ──
                 with col_h:
                     st.markdown("**🕐 Fights by Hour of Day**")
                     hours     = list(range(24))
@@ -2470,7 +2467,6 @@ def render_smart_tools():
                     ax2.tick_params(colors=c["tick"], labelsize=7)
                     ax2.spines[:].set_color(c["spine"])
 
-                    # Annotate peak hour
                     if max(h_fights) > 0:
                         peak_h = hours[h_fights.index(max(h_fights))]
                         ax2.axvline(peak_h, color="#7ecfff", linewidth=1, linestyle=":", alpha=0.7)
@@ -2479,7 +2475,6 @@ def render_smart_tools():
                     plt.tight_layout()
                     st.pyplot(fig2, use_container_width=True); plt.close(fig2)
 
-                # ── Day-of-week chart ──
                 with col_d:
                     st.markdown("**📆 Fights by Day of Week**")
                     dow_labels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
@@ -2498,7 +2493,6 @@ def render_smart_tools():
                     plt.tight_layout()
                     st.pyplot(fig3, use_container_width=True); plt.close(fig3)
 
-                # ── Summary insight ──
                 total_fights = sum(day_fights)
                 total_all    = sum(day_totals)
                 if total_fights > 0:
@@ -2519,7 +2513,6 @@ def render_smart_tools():
                         unsafe_allow_html=True
                     )
 
-                # Export
                 export_data = {
                     "generated_at": datetime.now().isoformat(),
                     "daily": day_counts,
@@ -2535,9 +2528,6 @@ def render_smart_tools():
                     key="heatmap_dl"
                 )
 
-    # ══════════════════════════════════════════════════════
-    # TAB 3 — Zone Manager
-    # ══════════════════════════════════════════════════════
     with tab_zones:
         st.markdown("### 🗺️ Zone Manager")
         st.markdown(
@@ -2550,7 +2540,6 @@ def render_smart_tools():
 
         zones = load_zones()
 
-        # ── Add zone ──
         with st.expander("➕ Add / Edit Zones", expanded=len(zones) == 0):
             with st.form("zone_form"):
                 zc1, zc2, zc3 = st.columns(3)
@@ -2563,7 +2552,6 @@ def render_smart_tools():
                 z_desc = st.text_area("Description", placeholder="What is monitored here?", height=60)
                 if st.form_submit_button("Save Zone", type="primary"):
                     if z_name.strip():
-                        # Update existing or append
                         existing = [z for z in zones if z.get("name") == z_name.strip()]
                         if existing:
                             existing[0].update({"camera": z_cam, "location": z_loc, "description": z_desc})
@@ -2584,7 +2572,6 @@ def render_smart_tools():
         if not zones:
             st.info("No zones defined yet. Add your first zone above.")
         else:
-            # ── Zone list ──
             st.markdown(f"**{len(zones)} zone(s) defined**")
             records_all = get_all_pred_records()
             hist_all_z  = load_history_store()
@@ -2594,7 +2581,6 @@ def render_smart_tools():
                 zcam  = zone.get("camera", "")
                 zloc  = zone.get("location", "")
 
-                # Count incidents tagged to this zone's camera
                 zone_fights  = sum(1 for h in hist_all_z
                                    if h.get("camera","") == zcam
                                    and "fight" in str(h.get("pred_lbl","")).lower()
@@ -2624,7 +2610,6 @@ def render_smart_tools():
                     if zone.get("description"):
                         st.caption(zone["description"])
 
-                    # Recent incidents for this zone
                     zone_incidents = [h for h in hist_all_z if h.get("camera","") == zcam][:5]
                     if zone_incidents:
                         st.markdown("**Recent incidents at this zone:**")
@@ -2647,7 +2632,6 @@ def render_smart_tools():
                         save_zones(zones)
                         st.rerun()
 
-            # ── Zone risk summary chart ──
             if zones:
                 st.markdown("**Zone Risk Overview**")
                 zone_names_chart  = [z.get("name","?") for z in zones]
@@ -2675,7 +2659,6 @@ def render_smart_tools():
                 else:
                     st.caption("No fight incidents recorded for any zone yet.")
 
-            # Export zones
             st.download_button(
                 "⬇ Export zones (JSON)",
                 data=json.dumps(zones, indent=2),
@@ -2684,9 +2667,6 @@ def render_smart_tools():
                 key="zones_dl"
             )
 
-    # ══════════════════════════════════════════════════════
-    # TAB 4 — Chain of Custody Log
-    # ══════════════════════════════════════════════════════
     with tab_coc:
         st.markdown("### 🔐 Chain of Custody Log")
         st.markdown(
@@ -2699,7 +2679,6 @@ def render_smart_tools():
 
         coc_entries = load_coc()
 
-        # ── Register new entry ──
         with st.expander("➕ Register Evidence File", expanded=False):
             st.markdown("Select a processed folder to hash and register all its output files.")
             records_coc = get_all_pred_records()
@@ -2731,7 +2710,6 @@ def render_smart_tools():
                             except:
                                 pass
 
-                        # Bundle hash
                         bundle_str = json.dumps(hashes, sort_keys=True)
                         bundle_hash = hashlib.sha256(bundle_str.encode()).hexdigest()
 
@@ -2759,7 +2737,6 @@ def render_smart_tools():
         else:
             st.markdown(f"**{len(coc_entries)} registered evidence entries**")
 
-            # Verify all button
             if st.button("🔍 Verify All Entries (re-hash & compare)", use_container_width=False, key="coc_verify_all"):
                 n_ok = 0; n_fail = 0
                 for entry_v in coc_entries:
@@ -2796,18 +2773,15 @@ def render_smart_tools():
                     ec3.metric("Reviewer", entry_coc.get("reviewer","—") or "—")
 
                     st.markdown(f"<span class='{badge}'>{badge_txt}</span> Confidence: {entry_coc.get('confidence','?')}", unsafe_allow_html=True)
-
                     st.markdown(f"**Bundle SHA-256:** `{entry_coc.get('bundle_hash','?')}`")
 
                     if entry_coc.get("notes"):
                         st.caption(f"Notes: {entry_coc['notes']}")
 
-                    # File hashes
                     with st.expander("File hashes", expanded=False):
                         for fk, finfo in entry_coc.get("file_hashes", {}).items():
                             st.text(f"{fk}: {finfo.get('sha256','?')[:32]}...  ({finfo.get('size_bytes',0):,} bytes)")
 
-                    # Verify this entry live
                     if st.button(f"🔍 Verify this entry", key=f"coc_verify_{i}"):
                         folder_path_v = class_root(entry_coc.get("dataset",""), entry_coc.get("cls","")) / entry_coc.get("folder","")
                         files_v = get_files(folder_path_v)
@@ -2826,7 +2800,6 @@ def render_smart_tools():
                         else:
                             st.error(f"⚠ Hash mismatch on: {', '.join(mismatches)} — files may have been altered!")
 
-                    # Export certificate
                     cert = {
                         "certificate_type": "VisionGuard Chain of Custody",
                         "generated_at": datetime.now().isoformat(),
